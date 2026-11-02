@@ -1,0 +1,37 @@
+name: Build ScreenLink
+on: [push, workflow_dispatch]
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v3
+        with: { gradle-version: 8.9 }
+      - run: gradle assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenLink-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Get ffmpeg
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip -OutFile ff.zip
+          Expand-Archive ff.zip ff
+          Copy-Item (Get-ChildItem ff -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName pc/ffmpeg.exe
+      - run: |
+          pip install pyinstaller
+          pyinstaller --onefile --noconsole --name ScreenLink --add-binary "ffmpeg.exe;." server.py
+        working-directory: pc
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenLink-exe
+          path: pc/dist/ScreenLink.exe
